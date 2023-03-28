@@ -76,6 +76,19 @@ Define $g(x, y)$ as a function in R, compute the gradient of $g(x, y)$
 with respect to $x=3$ and $y=4$. Does the answer match what you
 expected?
 
+```{r}
+#Defining the function g(x, y)
+g <- function(x, y){
+  return((x - 3)^2 + (y - 4)^2)
+}
+
+#Computing the gradient of g(x, y) at x = 3 and y = 4
+library(numDeriv)
+grad_g <- grad(g, c(3, 4))
+
+cat(paste0("Gradient of g(x, y) at (3, 4): ", grad_g, "\n"))
+```
+
 ------------------------------------------------------------------------
 
 ###### 1.2 (10 points)
@@ -109,6 +122,10 @@ Define $h(\u, \v)$ as a function in R, initialize the two vectors $\u$
 and $\v$ as `torch_tensor`s. Compute the gradient of $h(\u, \v)$ with
 respect to $\u$. Does the answer match what you expected?
 
+```{r}
+
+```
+
 ------------------------------------------------------------------------
 
 ###### 1.3 (5 points)
@@ -124,6 +141,10 @@ $$ and evaluate $f'(z_0)$ when $z_0 = -3.5$.
 Define $f(z)$ as a function in R, and using the `torch` library compute
 $f'(-3.5)$.
 
+```{r}
+
+```
+
 ------------------------------------------------------------------------
 
 ###### 1.4 (5 points)
@@ -131,11 +152,16 @@ $f'(-3.5)$.
 For the same function $f$, initialize $z[1] = -3.5$, and perform $n=100$
 iterations of **gradient descent**, i.e.,
 
-> $z[{k+1}] = z[k] - \eta f'(z[k]) \ \ \ \$ for $k = 1, 2, \dots, 100$
+> \$z\[{k+1}\] = z\[k\] - \eta f'(z\[k\])    \$ for
+> $k = 1, 2, \dots, 100$
 
 Plot the curve $f$ and add taking $\eta = 0.02$, add the points
 $\{z_0, z_1, z_2, \dots z_{100}\}$ obtained using gradient descent to
 the plot. What do you observe?
+
+```{r}
+
+```
 
 ------------------------------------------------------------------------
 
@@ -144,6 +170,10 @@ the plot. What do you observe?
 Redo the same analysis as **Question 1.4**, but this time using
 $\eta = 0.03$. What do you observe? What can you conclude from this
 analysis
+
+```{r}
+
+```
 
 <br><br><br><br> <br><br><br><br> ---
 
@@ -172,7 +202,22 @@ to `y` for convenience.
 ```{r}
 url <- "https://web.stanford.edu/class/archive/cs/cs109/cs109.1166/stuff/titanic.csv"
 
-df <- ... # Insert your code here
+df <- read.csv(url) %>%
+  drop_na()
+
+head(df)
+```
+
+```{r}
+#Converting binary variables to factors
+df$Survived = as.factor(df$Survived)
+df$Sex = as.factor(df$Sex)
+
+#Renaming the response variable
+names(df)[names(df) == "Survived"] <- "y"
+
+#Converting column names to lower case
+names(df) <- tolower(names(df))
 ```
 
 ------------------------------------------------------------------------
@@ -183,7 +228,10 @@ Visualize the correlation matrix of all numeric columns in `df` using
 `corrplot()`
 
 ```{r}
-df %>% ... # Insert your code here
+df %>% select(where(is.numeric)) %>%
+  cor() %>%
+  round(digits = 2) %>%
+  corrplot(diag = F)
 ```
 
 ------------------------------------------------------------------------
@@ -201,7 +249,7 @@ the titanic as a function of:
 -   `# parents`
 
 ```{r}
-full_model <- ... # Insert your code here
+full_model <- glm(y ~ pclass + sex + age + fare + siblings.spouses.aboard + parents.children.aboard, data = df, family = binomial())
 summary(full_model)
 ```
 
@@ -218,6 +266,20 @@ Recall the definition of logistic regression from the lecture notes, and
 also recall how we interpreted the slope in the linear regression model
 (particularly when the covariate was categorical).
 :::
+
+> The intercept term (5.297252) represents the estimated log-odds of
+> survival when all the predictor variables are equal to zero. In other
+> words, when a passenger is female, in the first class, with no
+> siblings/spouses or parents/children on board, and with statistically
+> significant $(p < 2e-16)$, meaning that the log-odds of survival is
+> significantly different from zero for the reference category. The
+> slope terms represent the estimated change in the log-odds of survival
+> associated with one-unit increase in each predictor variable. The odds
+> ratio can be calculated by taking the exponent of each coefficient.
+> For example, for the `siblings.spouses.aboard` predictor, the exponent
+> of the coefficient is -0.401831. This suggests that the odds of
+> survival decrease by 0.401831, which is by a factor of 33.1% for each
+> additional sibling/spouse on board.
 
 <br><br><br><br> <br><br><br><br> ---
 
@@ -243,14 +305,14 @@ categorical vectors (`predicted` and `expected`) and outputs:
 
 ```{r}
 overview <- function(predicted, expected){
-    accuracy <- ... # Insert your code here
-    error <- ... # Insert your code here
-    total_false_positives <- ... # Insert your code here
-    total_true_positives <- ... # Insert your code here
-    total_false_negatives <- ... # Insert your code here
-    total_true_negatives <- ... # Insert your code here
-    false_positive_rate <- ... # Insert your code here
-    false_negative_rate <- ... # Insert your code here
+    accuracy <- sum(predicted == expected)/length(expected)
+    error <- 1 - accuracy
+    total_false_positives <- sum((predicted == "positive") & (expected == "negative"))
+    total_true_positives <- sum((predicted == "positive") & (expected == "negative"))
+    total_false_negatives <- sum((predicted == "negative") & (expected == "negative"))
+    total_true_negatives <- sum((predicted == "negative") & (expected == "negative"))
+    false_positive_rate <- total_false_positives / (total_false_positives + total_true_negatives)
+    false_negative_rate <- total_false_negatives / (total_false_negatives + total_true_positives)
     return(
         data.frame(
             accuracy = accuracy, 
@@ -276,7 +338,7 @@ and making sure that the accuracy is $100\%$ while the errors are $0\%$.
 Display an overview of the key performance metrics of `full_model`
 
 ```{r}
-... # Insert your code here
+summary(full_model)
 ```
 
 ------------------------------------------------------------------------
@@ -284,15 +346,15 @@ Display an overview of the key performance metrics of `full_model`
 ###### 3.3 (5 points)
 
 Using backward-stepwise logistic regression, find a parsimonious
-altenative to `full_model`, and print its `overview`
+alternative to `full_model`, and print its `overview`
 
 ```{r}
-step_model <- ... # Insert your code here. 
+step_model <- step(full_model, direction = "backward", scope = formula(full_model)) 
 summary(step_model)
 ```
 
 ```{r}
-step_predictions <- ... # Insert your code here
+step_predictions <- predict(step_model, type = "response")
 overview(step_predictions, df$y)
 ```
 
@@ -301,10 +363,13 @@ overview(step_predictions, df$y)
 ###### 3.4 (15 points)
 
 Using the `caret` package, setup a $5$-fold cross-validation training
-method using the `caret::trainConrol()` function
+method using the `caret::trainControl()` function
 
 ```{r}
-controls <- trainControl() # ... insert your code here
+controls <- trainControl(
+  method = "cv",
+  number = 5
+)
 ```
 
 Now, using `control`, perform $5$-fold cross validation using
@@ -315,23 +380,38 @@ Take the search grid for $\lambda$ to be in
 $\{ 2^{-20}, 2^{-19.5}, 2^{-19}, \dots, 2^{-0.5}, 2^{0} \}$.
 
 ```{r}
-# Insert your code in the ... region
 lasso_fit <- train(
-  x = ...,
-  y = ...,
-  method = ...,
+  x = subset(df, select = -y),
+  y = df$y,
+  method = "glmnet",
   trControl = controls, 
   tuneGrid = expand.grid(
-    alpha = ...,
+    alpha = 1,
     lambda = 2^seq(-20, 0, by = 0.5)
     ),
-  family = ...
+  standardize = TRUE,
+  family = "gaussian"
 )
 ```
 
 Using the information stored in `lasso_fit$results`, plot the results
 for cross-validation accuracy vs. $log_2(\lambda)$. Choose the optimal
 $\lambda^*$, and report your results for this value of $\lambda^*$.
+
+```{r}
+#Plotting cross-validation results
+plot(lasso_fit)
+```
+
+```{r}
+#Finding optimal lambda value
+optimal_lambda <- lasso_fit$results$lambda[which.ax(laso_fit$results$Accuracy)]
+optimal_accuracy <- max(lasso_fit$results$Accuracy)
+
+#printing the results
+cat(paste0("Optimal lambda: ", optimal_lambda, "\n"))
+cat(paste0("Cross-validation accuracy for optimal lambda: ", optimal_accuracy, "\n"))
+```
 
 ------------------------------------------------------------------------
 
@@ -348,8 +428,8 @@ Now, initialize the covariates $X$ and the response $y$ as `torch`
 tensors
 
 ```{r}
-X <- ... # Insert your code here
-y <- ... # Insert your code here
+X <- torch_tensor(X, dtype = torch_float())
+y <- torch_tensor(y, dtype = torch_float())
 ```
 
 Using the `torch` library, initialize an `nn_module` which performs
@@ -359,11 +439,13 @@ covariates)
 ```{r}
 logistic <- nn_module(
   initialize = function() {
-    self$f <- ... # Insert your code here
-    self$g <- ... # Insert your code here
+    self$f <- nn_linear(1, 1)
+    self$g <- nn_sigmoid()
   },
   forward = function(x) {
-    ... # Insert your code here
+    x %>%
+      self$f() %>%
+      self$g()
   }
 )
 
@@ -383,7 +465,8 @@ loss** between `Fun(X)` and `y`.
 
 ```{r}
 Loss <- function(X, y, Fun){
-  ... # Insert our code here
+  y_pred <- model(x)
+  return (mean((y_pred - y)^2))
 }
 ```
 
@@ -392,10 +475,20 @@ of gradient descent in order to fit logistic regression using `torch`.
 
 ```{r}
 f <- logistic()
-optimizer <- optim_adam(...) # Insert your code here
+optimizer <- optim_adam(logistic_reg_1$parameters, lr = 0.01)
 
 n <- 1000
-...  # Insert your code for gradient descent here
+for ( i in 1:n){
+  loss <- L(X, y, logistic_reg_1)
+  
+  optimizer$zero_grad()
+  loss$backward()
+  optimizer$step()
+  
+  if ( i %% 20 == 0){
+    cat(sprintf("Steps : %d, Loss: %.4f\n", i, loss$item()))
+  }
+}
 ```
 
 Using the final, optimized parameters of `f`, compute the compute the
@@ -403,7 +496,7 @@ predicted results on `X`
 
 ```{r}
 predicted_probabilities <- f(X) %>% as_array()
-torch_predictions <- ... # Insert your code here
+torch_predictions <- ifelse(logistic_reg_1(X) < 0.5, 0, 1)
 
 overview(torch_predictions, df$y)
 ```
