@@ -138,29 +138,21 @@ Define $h(\u, \v)$ as a function in R, initialize the two vectors $\u$
 and $\v$ as `torch_tensor`s. Compute the gradient of $h(\u, \v)$ with
 respect to $\u$. Does the answer match what you expected?
 
-> $$
-> \nabla_\u h(\u, \v) = \begin{pmatrix} \frac{\partial}{\partial u_1}h(\u, \v) \\ \frac{\partial}{\partial u_2}h(\u, \v) \\ \vdots \\ \frac{\partial}{\partial u_n}h(\u, \v) \end{pmatrix} = 3(\u \cdot \v)^2 \begin{pmatrix} v_1 \\ v_2 \\ \vdots \\ v_n \end{pmatrix} = 3(\u \cdot \v)^2 \v
-> $$
->
-> Using the given values for $\u$ and $\v$, we have:
->
-> $$
-> \nabla_\u h(\u, \v) = 3(-5)^2 \begin{pmatrix} -1 \\ -1 \\ -1 \\ -1 \\ -1 \\ 1 \\ 1 \\ 1 \\ 1 \\ 1 \end{pmatrix} = 3 \times 25 \begin{pmatrix} -1 \\ -1 \\ -1 \\ -1 \\ -1 \\ 1 \\ 1 \\ 1 \\ 1 \\ 1 \end{pmatrix} = -75\begin{pmatrix} 1 \\ 1 \\ 1 \\ 1 \\ 1 \\ -1 \\ -1 \\ -1 \\ -1 \\ -1 \end{pmatrix}
-> $$
-
 ```{r}
 library(torch)
-u <- torch_tensor(c(-1, 1, -1, 1, -1, 1, -1, 1, -1, 1))
-v <- torch_tensor(c(-1, -1, -1, -1, -1, 1, 1, 1, 1, 1))
+u <- torch_tensor(c(-1, 1, -1, 1, -1, 1, -1, 1, -1, 1), requires_grad = TRUE)
+v <- torch_tensor(c(-1, -1, -1, -1, -1, 1, 1, 1, 1, 1), requires_grad = TRUE)
 
 h <- function(u, v){
-  sum((u %*% as.matrix(v))^3)
+  (torch_dot(u, v)^3)
 }
 
 h_uv <- h(u, v)
 h_uv$backward()
 u$grad
 ```
+
+> Yes, the answer matches what I expected.
 
 ------------------------------------------------------------------------
 
@@ -194,14 +186,14 @@ $f'(-3.5)$.
 library(torch)
 
 f <- function(z){
-  z^4 - 6*z^2 - 3*z + 4
+  return(z^4 - 6*z^2 - 3*z + 4)
 }
 
 z_0 <- torch_tensor(-3.5, requires_grad = TRUE)
+y <- f(z_0)
 
-output <- f(z_0)
-output.backward()
-z_0$grad()
+y$backward()
+z_0$grad
 ```
 
 ------------------------------------------------------------------------
@@ -363,22 +355,22 @@ categorical vectors (`predicted` and `expected`) and outputs:
 
 ```{r}
 overview <- function(predicted, expected){
-    accuracy <- sum(predicted == expected)/length(expected)
-    error <- 1 - accuracy
-    total_false_positives <- sum((predicted == "positive") & (expected == "negative"))
-    total_true_positives <- sum((predicted == "positive") & (expected == "negative"))
-    total_false_negatives <- sum((predicted == "negative") & (expected == "negative"))
-    total_true_negatives <- sum((predicted == "negative") & (expected == "negative"))
-    false_positive_rate <- total_false_positives / (total_false_positives + total_true_negatives)
-    false_negative_rate <- total_false_negatives / (total_false_negatives + total_true_positives)
-    return(
-        data.frame(
-            accuracy = accuracy, 
-            error=error, 
-            false_positive_rate = false_positive_rate, 
-            false_negative_rate = false_negative_rate
-        )
+  total_false_positives <- sum(predicted != expected & predicted == 1)
+  total_true_positives <- sum(predicted == expected & expected == 1)
+  total_false_negtaives <- sum(predicted != expected & predicted == 0)
+  total_true_negatives <- sum(predicted == expected & expected == 0)
+  false_positive_rate <- total_false_positives / (total_false_positives + total_true_negatives)
+  false_negative_rate <- total_false_negtaives / (total_false_negtaives + total_true_positives)
+  accuracy <- (total_true_positives + total_true_negatives) / length(predicted)
+  error <- 1 - accuracy
+  return(
+    data.frame(
+      accuracy = accuracy,
+      error = error,
+      false_positive_rate = false_positive_rate,
+      false_negative_rate = false_negative_rate
     )
+  )
 }
 ```
 
@@ -396,7 +388,11 @@ and making sure that the accuracy is $100\%$ while the errors are $0\%$.
 Display an overview of the key performance metrics of `full_model`
 
 ```{r}
+full_model_prob <- predict(full_model, type = "response")
+full_model_pred <- ifelse(full_model_prob > 0.5, 1, 0)
 
+full_model_overview <- overview(full_model_pred, df$y)
+full_model_overview
 ```
 
 ------------------------------------------------------------------------
@@ -412,8 +408,11 @@ summary(step_model)
 ```
 
 ```{r}
-step_predictions <- predict(step_model, df, type = "response")
-overview(step_predictions, df$y)
+step_predictions <- predict(step_model, type = "response")
+step_predictions <- ifelse(step_predictions >= 0.5, 1, 0)
+
+stepwise_overview <- overview(step_predictions, df$y)
+stepwise_overview
 ```
 
 ------------------------------------------------------------------------
@@ -439,15 +438,14 @@ $\{ 2^{-20}, 2^{-19.5}, 2^{-19}, \dots, 2^{-0.5}, 2^{0} \}$.
 
 ```{r}
 lasso_fit <- train(
-  x = subset(df, select = -y),
-  y = df$y,
+  y ~ .,
+  data = subset(df, select = -name),
   method = "glmnet",
   trControl = controls, 
   tuneGrid = expand.grid(
     alpha = 1,
     lambda = 2^seq(-20, 0, by = 0.5)
     ),
-  standardize = TRUE,
   family = "binomial"
 )
 ```
@@ -463,7 +461,7 @@ plot(lasso_fit)
 
 ```{r}
 #Finding optimal lambda value
-optimal_lambda <- lasso_fit$results$lambda[which.ax(laso_fit$results$Accuracy)]
+optimal_lambda <- lasso_fit$results$lambda[which.max(lasso_fit$results$Accuracy)]
 optimal_accuracy <- max(lasso_fit$results$Accuracy)
 
 #printing the results
@@ -523,8 +521,7 @@ loss** between `Fun(X)` and `y`.
 
 ```{r}
 Loss <- function(X, y, Fun){
-  y_pred <- f(X)
-  return (mean((y_pred - y)^2))
+  nn_bce_loss()(Fun(X), y)
 }
 ```
 
@@ -554,9 +551,10 @@ predicted results on `X`
 
 ```{r}
 predicted_probabilities <- f(X) %>% as_array()
-torch_predictions <- ifelse(f(X) < 0.5, 0, 1)
+torch_predictions <- ifelse(predicted_probabilities >= 0.5, 1, 0)
 
-overview(torch_predictions, df$y)
+torch_overview <- overview(torch_predictions, df$y)
+torch_overview
 ```
 
 ------------------------------------------------------------------------
@@ -568,7 +566,13 @@ of the $4$ models we have looked at in this assignment, and comment on
 their relative strengths and drawbacks.
 
 ```{r}
+lasso_predictions <- predict(lasso_fit)
 
+lasso_overview<- overview(lasso_predictions, df$y)
+lasso_overview
+
+# combining all the overviews
+comb
 ```
 
 ::: {.hidden unless-format="pdf"}
