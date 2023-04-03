@@ -631,6 +631,14 @@ combine_overview <- combine_overview[, c('Model', 'accuracy', 'error', 'false_po
 combine_overview
 ```
 
+> Based on the output, we can see that the Stepwise regression model
+> seems to perform slightly better than the Full Model, while the LASSO
+> model selects a smaller set of predictors and has a lower false
+> positive rate. The Torch model, performs very poorly and is hence not
+> suitable for the given data. However, it is important to note that the
+> relative strengths and weaknesses of the models may depend on the
+> specific context and the goals of the analysis.
+
 ::: {.hidden unless-format="pdf"}
 \pagebreak
 :::
