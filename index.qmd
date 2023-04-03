@@ -76,21 +76,6 @@ Define $g(x, y)$ as a function in R, compute the gradient of $g(x, y)$
 with respect to $x=3$ and $y=4$. Does the answer match what you
 expected?
 
-> $$
-> \begin{align}
-> \frac{\partial}{\partial x} g(x,y) &= 2(x-3) \\
-> \frac{\partial}{\partial y} g(x,y) &= 2(y-4)
-> \end{align}
-> $$
->
-> To find the values of the partial derivatives at $(x=3, y=4)$, we
-> simply substitute these values into the expressions above: $$
-> \begin{align}
-> \frac{\partial}{\partial x} g(x,y) \Bigg|{(x=3,y=4)} &= 2(3-3) = 0 \\
-> \frac{\partial}{\partial y} g(x,y) \Bigg|{(x=3,y=4)} &= 2(4-4) = 0
-> \end{align}
-> $$
-
 ```{r}
 #Defining the function g(x, y)
 g <- function(x){
@@ -169,19 +154,6 @@ $$ and evaluate $f'(z_0)$ when $z_0 = -3.5$.
 Define $f(z)$ as a function in R, and using the `torch` library compute
 $f'(-3.5)$.
 
-> To find $f'(z_0)$, we simply differentiate the function \$f(z)\$ with
-> respect to \$z\$:
->
-> $f′(z)=4z^3−12z−3$
->
-> Therefore, we have:
->
-> $f′(z_0)=4z_{0}^3−12z_0−3$
->
-> Substituting $z_0 = -3.5$, we have:
->
-> $f′(−3.5)=4(−3.5)3−12(−3.5)−3=−121$
-
 ```{r}
 library(torch)
 
@@ -210,8 +182,41 @@ $\{z_0, z_1, z_2, \dots z_{100}\}$ obtained using gradient descent to
 the plot. What do you observe?
 
 ```{r}
+n <- 100
+z <- -3.5
+eta <- 0.02
+z_vals <- c(z)
 
+for(i in 1:n){
+  df <- 4*z^3 - 12*z - 3
+  z <- z - eta * df
+  
+  z_vals <- c(z_vals, z)
+}
+
+#plotting the curve
+x_vals <- seq(-4, 4, by = 0.01)
+y_vals <- f(x_vals)
+
+df_f <- data.frame(x = x_vals, y = y_vals)
+df_z <- data.frame(x = z_vals, y = f(z_vals))
+
+ggplot() +
+  geom_line(data = df_f, aes(x, y), color = "blue", size = 1) +
+  geom_point(data = df_z, aes(x, y), color = "red", size = 3) +
+  ggtitle("Gradient Descent for f(z)") +
+  xlab("z") +
+  ylab("f(z)")
 ```
+
+> The graph outputted visualizes the gradient descent algorithm for the
+> function. The blue line represents the curve of the function $f(z)$,
+> while the red dots show the values of $z$ obtained during each
+> iteration of the gradient descent algorithm. As the algorithm
+> progresses, the value of $z$ moves towards the minimum of the
+> function, which is at $z = -0.522$. The red dots show the values of
+> $z$ obtained at each iteration of the algorithm, and we can observe
+> that they converge to the minimum.
 
 ------------------------------------------------------------------------
 
@@ -222,8 +227,51 @@ $\eta = 0.03$. What do you observe? What can you conclude from this
 analysis
 
 ```{r}
+n <- 100
+z <- -3.5
+eta <- 0.03
+z_vals <- c(z)
 
+for(i in 1:n){
+  df <- 4*z^3 - 12*z - 3
+  z <- z - eta * df
+  
+  z_vals <- c(z_vals, z)
+}
+
+#plotting the curve
+x_vals <- seq(-4, 4, by = 0.01)
+y_vals <- f(x_vals)
+
+df_f <- data.frame(x = x_vals, y = y_vals)
+df_z <- data.frame(x = z_vals, y = f(z_vals))
+
+ggplot() +
+  geom_line(data = df_f, aes(x, y), color = "blue", size = 1) +
+  geom_point(data = df_z, aes(x, y), color = "red", size = 3) +
+  ggtitle("Gradient Descent for f(z)") +
+  xlab("z") +
+  ylab("f(z)")
 ```
+
+> The graph outputted visualizes the gradient descent algorithm for the
+> function. The blue line represents the curve of the function $f(z)$,
+> while the red dots show the values of $z$ obtained during each
+> iteration of the gradient descent algorithm. As the algorithm
+> progresses, the value of $z$ moves towards the minimum of the
+> function, which is at $z = -0.522$. The red dots show the values of
+> $z$ obtained at each iteration of the algorithm, and we can observe
+> that they converge to the minimum. The path taken is slightly
+> different from the previous graph, as the red dots ate oscillating
+> before converging on the minimum, this is because of the larger eta
+> value.
+>
+> Based on the analysis, we can see that the choice of the learning rate
+> $\eta$, the performance of the gradient descent algorithm is
+> determined. A smaller learning rate, results in slower convergence
+> while a larger learning rate results in overshooting and oscillating
+> around the minimum. We can conclude, that it is important to choose an
+> appropriate learning rate based on the specific problem being solved.
 
 <br><br><br><br> <br><br><br><br> ---
 
@@ -469,6 +517,14 @@ cat(paste0("Optimal lambda: ", optimal_lambda, "\n"))
 cat(paste0("Cross-validation accuracy for optimal lambda: ", optimal_accuracy, "\n"))
 ```
 
+```{r}
+#overview for the lasso_fit
+lasso_predictions <- predict(lasso_fit)
+
+lasso_overview<- overview(lasso_predictions, df$y)
+lasso_overview
+```
+
 ------------------------------------------------------------------------
 
 ###### 3.5 (25 points)
@@ -566,13 +622,13 @@ of the $4$ models we have looked at in this assignment, and comment on
 their relative strengths and drawbacks.
 
 ```{r}
-lasso_predictions <- predict(lasso_fit)
-
-lasso_overview<- overview(lasso_predictions, df$y)
-lasso_overview
-
 # combining all the overviews
-comb
+combine_overview <- rbind(full_model_overview, stepwise_overview, lasso_overview, torch_overview) %>%
+  mutate(Model = c('Full Model', 'Stepwise Regression', 'LASSO', 'Torch'))
+
+combine_overview <- combine_overview[, c('Model', 'accuracy', 'error', 'false_positive_rate', 'false_negative_rate')]
+
+combine_overview
 ```
 
 ::: {.hidden unless-format="pdf"}
